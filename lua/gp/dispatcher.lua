@@ -155,21 +155,60 @@ D.prepare_payload = function(messages, model, provider)
 			messages = messages,
 			system = system,
 			max_tokens = model.max_tokens or 4096,
-			temperature = math.max(0, math.min(2, model.temperature or 1)),
-			top_p = math.max(0, math.min(1, model.top_p or 1)),
+			temperature = model.temperature and math.max(0, math.min(2, model.temperature)) or nil,
+			top_p = model.top_p and math.max(0, math.min(1, model.top_p)) or nil,
 		}
+
+		if model.thinking_budget ~= nil then
+			payload.thinking = {
+				type = "enabled",
+				budget_tokens = model.thinking_budget
+			}
+		end
+
 		return payload
 	end
 
-	if provider == "copilot" and model.model == "gpt-4o" then
-		model.model = "gpt-4o-2024-05-13"
+	if provider == "ollama" then
+		local payload = {
+			model = model.model,
+			stream = true,
+			messages = messages,
+		}
+
+		if model.think ~= nil then
+			payload.think = model.think
+		end
+
+		local options = {}
+		if model.temperature then
+			options.temperature = math.max(0, math.min(2, model.temperature))
+		end
+		if model.top_p then
+			options.top_p = math.max(0, math.min(1, model.top_p))
+		end
+		if model.min_p then
+			options.min_p = math.max(0, math.min(1, model.min_p))
+		end
+		if model.num_ctx then
+			options.num_ctx = model.num_ctx
+		end
+		if model.top_k then
+			options.top_k = model.top_k
+		end
+
+		if next(options) then
+			payload.options = options
+		end
+
+		return payload
 	end
 
 	local output = {
 		model = model.model,
 		stream = true,
 		messages = messages,
-		max_tokens = model.max_tokens or 4096,
+		max_completion_tokens = model.max_completion_tokens or 4096,
 		temperature = math.max(0, math.min(2, model.temperature or 1)),
 		top_p = math.max(0, math.min(1, model.top_p or 1)),
 	}
@@ -185,6 +224,13 @@ D.prepare_payload = function(messages, model, provider)
 			end
 		end
 		-- remove max_tokens, top_p, temperature for o1 models. https://platform.openai.com/docs/guides/reasoning/beta-limitations
+		output.max_completion_tokens = nil
+		output.temperature = nil
+		output.top_p = nil
+	end
+
+	if model.model == "gpt-5" or  model.model == "gpt-5-mini" then
+		-- remove max_tokens, top_p, temperature for gpt-5 models (duh)
 		output.max_tokens = nil
 		output.temperature = nil
 		output.top_p = nil
@@ -227,6 +273,7 @@ local query = function(buf, provider, payload, handler, on_exit, callback)
 
 	local out_reader = function()
 		local buffer = ""
+		local anthropic_thinking = false -- local state for Anthropic thinking blocks
 
 		---@param lines_chunk string
 		local function process_lines(lines_chunk)
@@ -249,14 +296,24 @@ local query = function(buf, provider, payload, handler, on_exit, callback)
 					end
 				end
 
-				if qt.provider == "anthropic" and line:match('"text":') then
+				if qt.provider == "anthropic" and (line:match('"text":') or line:match('"thinking"')) then
 					if line:match("content_block_start") or line:match("content_block_delta") then
 						line = vim.json.decode(line)
-						if line.delta and line.delta.text then
-							content = line.delta.text
+						if line.content_block then
+							if line.content_block.type == "thinking" then
+								anthropic_thinking = true
+								content = "<think>"
+							elseif line.content_block.type == "text" and anthropic_thinking then
+								anthropic_thinking = false
+								content = "</think>\n\n"
+							end
 						end
-						if line.content_block and line.content_block.text then
-							content = line.content_block.text
+						if line.delta then
+							if line.delta.type == "thinking_delta" then
+								content = line.delta.thinking or ""
+							elseif line.delta.type == "text_delta" then
+								content = line.delta.text or ""
+							end
 						end
 					end
 				end
@@ -264,6 +321,15 @@ local query = function(buf, provider, payload, handler, on_exit, callback)
 				if qt.provider == "googleai" then
 					if line:match('"text":') then
 						content = vim.json.decode("{" .. line .. "}").text
+					end
+				end
+
+				if qt.provider == "ollama" then
+					if line:match('"message":') and line:match('"content":') then
+						local success, decoded = pcall(vim.json.decode, line)
+						if success and decoded.message and decoded.message.content then
+							content = decoded.message.content
+						end
 					end
 				end
 
@@ -379,8 +445,6 @@ local query = function(buf, provider, payload, handler, on_exit, callback)
 			"x-api-key: " .. bearer,
 			"-H",
 			"anthropic-version: 2023-06-01",
-			"-H",
-			"anthropic-beta: messages-2023-12-15",
 		}
 	elseif provider == "azure" then
 		headers = {
@@ -388,6 +452,8 @@ local query = function(buf, provider, payload, handler, on_exit, callback)
 			"api-key: " .. bearer,
 		}
 		endpoint = render.template_replace(endpoint, "{{model}}", payload.model)
+	elseif provider == "ollama" then
+		headers = {}
 	else -- default to openai compatible headers
 		headers = {
 			"-H",

@@ -44,12 +44,12 @@ local config = {
 			secret = {
 				"bash",
 				"-c",
-				"cat ~/.config/github-copilot/hosts.json | sed -e 's/.*oauth_token...//;s/\".*//'",
+				"cat ~/.config/github-copilot/apps.json | sed -e 's/.*oauth_token...//;s/\".*//'",
 			},
 		},
 		ollama = {
 			disable = true,
-			endpoint = "http://localhost:11434/v1/chat/completions",
+			endpoint = "http://localhost:11434/api/chat",
 			secret = "dummy_secret",
 		},
 		lmstudio = {
@@ -173,6 +173,16 @@ local config = {
 		},
 		{
 			provider = "anthropic",
+			name = "ChatClaude-Sonnet-4-Thinking",
+			chat = true,
+			command = false,
+			-- string with model name or table with model name and parameters
+			model = { model = "claude-sonnet-4-20250514", thinking_budget = 1024 },
+			-- system prompt (use this to specify the persona/role of the AI)
+			system_prompt = require("gp.defaults").chat_system_prompt,
+		},
+		{
+			provider = "anthropic",
 			name = "ChatClaude-3-5-Haiku",
 			chat = true,
 			command = false,
@@ -192,6 +202,19 @@ local config = {
 				temperature = 0.6,
 				top_p = 1,
 				min_p = 0.05,
+			},
+			-- system prompt (use this to specify the persona/role of the AI)
+			system_prompt = "You are a general AI assistant.",
+		},
+		{
+			provider = "ollama",
+			name = "ChatQwen3-8B",
+			chat = true,
+			command = false,
+			-- string with model name or table with model name and parameters
+			model = {
+				model = "qwen3:8b",
+				think = false, -- toggle thinking mode for Ollama's thinking models
 			},
 			-- system prompt (use this to specify the persona/role of the AI)
 			system_prompt = "You are a general AI assistant.",

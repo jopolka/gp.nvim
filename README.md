@@ -109,7 +109,7 @@ require("gp").setup(conf)
 ```
 ## 2. OpenAI API key
 
-Make sure you have OpenAI API key. [Get one here](https://platform.openai.com/account/api-keys) and use it in the [4. Configuration](#4-configuration). Also consider setting up [usage limits](https://platform.openai.com/account/billing/limits) so you won't get suprised at the end of the month.
+Make sure you have OpenAI API key. [Get one here](https://platform.openai.com/account/api-keys) and use it in the [5. Configuration](#5-configuration). Also consider setting up [usage limits](https://platform.openai.com/account/billing/limits) so you won't get suprised at the end of the month.
 
 The OpenAI API key can be passed to the plugin in multiple ways:
 
@@ -149,7 +149,7 @@ Below is an example of the relevant configuration part enabling some of these. T
 			secret = {
 				"bash",
 				"-c",
-				"cat ~/.config/github-copilot/hosts.json | sed -e 's/.*oauth_token...//;s/\".*//'",
+				"cat ~/.config/github-copilot/apps.json | sed -e 's/.*oauth_token...//;s/\".*//'",
 			},
 		},
 
@@ -212,7 +212,7 @@ Voice commands (`:GpWhisper*`) depend on `SoX` (Sound eXchange) to handle audio 
 Below is a linked snippet with the default values, but I suggest starting with minimal config possible (just `openai_api_key` if you don't have `OPENAI_API_KEY` env set up). Defaults change over time to improve things, options might get deprecated and so on - it's better to change only things where the default doesn't fit your needs.
 
 <!-- README_REFERENCE_MARKER_REPLACE_NEXT_LINE -->
-https://github.com/Robitx/gp.nvim/blob/8dd99d85adfcfcb326f85a1f15bcd254f628df59/lua/gp/config.lua#L10-L627
+https://github.com/Robitx/gp.nvim/blob/b910a540f16875af77b27e49288021368cc674cf/lua/gp/config.lua#L10-L650
 
 # Usage
 
@@ -368,6 +368,10 @@ Displays currently used agents for chat and command instructions.
 #### `:GpAgent XY` <!-- {doc=:GpAgent-XY}  -->
 
 Choose a new agent based on its name, listing options based on the current buffer (chat agents if current buffer is a chat and command agents otherwise). The agent setting is persisted on disk across Neovim instances.
+
+#### `:GpSelectAgent` <!-- {doc=:GpSelectAgent}  -->
+
+Opens a selection interface using `vim.ui.select` to choose from all available agents, allowing you to directly select the desired agent from a list. Works seamlessly with telescope if available.
 
 ## Image commands
 
@@ -530,6 +534,7 @@ vim.keymap.set("v", "<C-g>x", ":<C-u>'<,'>GpContext<cr>", keymapOptions("Visual 
 
 vim.keymap.set({"n", "i", "v", "x"}, "<C-g>s", "<cmd>GpStop<cr>", keymapOptions("Stop"))
 vim.keymap.set({"n", "i", "v", "x"}, "<C-g>n", "<cmd>GpNextAgent<cr>", keymapOptions("Next Agent"))
+vim.keymap.set({"n", "i", "v", "x"}, "<C-g>l", "<cmd>GpSelectAgent<cr>", keymapOptions("Select Agent"))
 
 -- optional Whisper commands with prefix <C-g>w
 vim.keymap.set({"n", "i"}, "<C-g>ww", "<cmd>GpWhisper<cr>", keymapOptions("Whisper"))
@@ -582,6 +587,7 @@ require("which-key").add({
         { "<C-g>gv", ":<C-u>'<,'>GpVnew<cr>", desc = "Visual GpVnew" },
         { "<C-g>i", ":<C-u>'<,'>GpImplement<cr>", desc = "Implement selection" },
         { "<C-g>n", "<cmd>GpNextAgent<cr>", desc = "Next Agent" },
+        { "<C-g>l", "<cmd>GpSelectAgent<cr>", desc = "Select Agent" },
         { "<C-g>p", ":<C-u>'<,'>GpChatPaste<cr>", desc = "Visual Chat Paste" },
         { "<C-g>r", ":<C-u>'<,'>GpRewrite<cr>", desc = "Visual Rewrite" },
         { "<C-g>s", "<cmd>GpStop<cr>", desc = "GpStop" },
@@ -618,6 +624,7 @@ require("which-key").add({
         { "<C-g>gt", "<cmd>GpTabnew<cr>", desc = "GpTabnew" },
         { "<C-g>gv", "<cmd>GpVnew<cr>", desc = "GpVnew" },
         { "<C-g>n", "<cmd>GpNextAgent<cr>", desc = "Next Agent" },
+        { "<C-g>l", "<cmd>GpSelectAgent<cr>", desc = "Select Agent" },
         { "<C-g>r", "<cmd>GpRewrite<cr>", desc = "Inline Rewrite" },
         { "<C-g>s", "<cmd>GpStop<cr>", desc = "GpStop" },
         { "<C-g>t", "<cmd>GpChatToggle<cr>", desc = "Toggle Chat" },
@@ -653,6 +660,7 @@ require("which-key").add({
         { "<C-g>gt", "<cmd>GpTabnew<cr>", desc = "GpTabnew" },
         { "<C-g>gv", "<cmd>GpVnew<cr>", desc = "GpVnew" },
         { "<C-g>n", "<cmd>GpNextAgent<cr>", desc = "Next Agent" },
+        { "<C-g>l", "<cmd>GpSelectAgent<cr>", desc = "Select Agent" },
         { "<C-g>r", "<cmd>GpRewrite<cr>", desc = "Inline Rewrite" },
         { "<C-g>s", "<cmd>GpStop<cr>", desc = "GpStop" },
         { "<C-g>t", "<cmd>GpChatToggle<cr>", desc = "Toggle Chat" },
